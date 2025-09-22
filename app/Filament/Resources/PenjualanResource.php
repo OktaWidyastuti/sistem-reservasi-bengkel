@@ -117,8 +117,26 @@ class PenjualanResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('tanggal_booking')
+                    ->form([
+                        Forms\Components\DatePicker::make('tanggal_booking'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['tanggal_booking']) {
+                            $query->whereDate('tanggal_booking', $data['tanggal_booking']);
+                        }
+                    }),
+                    Tables\Filters\Filter::make('tanggal_transaksi')
+                    ->form([
+                        Forms\Components\DatePicker::make('tanggal_transaksi'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['tanggal_transaksi']) {
+                            $query->whereDate('tanggal_transaksi', $data['tanggal_transaksi']);
+                        }
+                    }),
             ])
+            
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])

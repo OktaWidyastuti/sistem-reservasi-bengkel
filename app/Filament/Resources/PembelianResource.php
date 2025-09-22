@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Actions\Action;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PembelianResource extends Resource
 {
@@ -87,10 +89,35 @@ class PembelianResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                 Tables\Filters\Filter::make('tanggal_pembelian')
+                    ->form([
+                        Forms\Components\DatePicker::make('tanggal_pembelian'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if ($data['tanggal_pembelian']) {
+                            $query->whereDate('tanggal_pembelian', $data['tanggal_pembelian']);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+            ])
+            ->headerActions([
+                Action::make('Export PDF')
+                    ->label('Export PDF')
+                    ->icon('heroicon-o-document')
+                    ->action(function ($livewire) {
+                        $pembelian = $livewire->getFilteredTableQuery()->get();
+
+                        $pdf = Pdf::loadView('exports.pembelian', [
+                            'pembelian' => $pembelian,
+                        ]);
+
+                        return response()->streamDownload(function () use($pdf){
+                            echo $pdf->output();
+
+                        }, 'pembelian.pdf');
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
