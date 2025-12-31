@@ -1,43 +1,125 @@
 <?php
 
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class OrderItem extends Model
 {
-     use HasFactory;
-
-    protected $table = 'order_items';
     protected $fillable = [
-        'product_id',
+        'order_id',
+        'sku',
+        'product_name',
         'quantity',
-        'price',
+        'sell_price',
+        'total_amount',
+        'status',
+        'bukti_pembayaran',
     ];
-        public function order()
+
+    public function asset()
     {
-        return $this->belongsTo(Order::class, 'order_id');
+        return $this->hasOne(Asset::class, 'sku', 'sku');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(Product::class, 'sku', 'sku');
     }
 
-    // Membuat Stock Movement
+    public function labaRugi()
+    {
+        return $this->hasOne(LabaRugi::class, 'order_item_id');
+    }
+
+    public function jurnal()
+    {
+        return $this->hasOne(Jurnal::class, 'order_item_id');
+    }
+
     protected static function booted()
     {
-        static::created(function ($item) {
-            if ($item->product) {
-                // update sold_qty
-                $item->product->increment('sold_qty', $item->quantity);
+        static::updating(function ($orderItem) {
+            $oldStatus = $orderItem->getOriginal('status');
+            $oldQuantity = $orderItem->getOriginal('quantity');
 
-                // catat pergerakan stok keluar
-                \App\Models\StockMovement::create([
-                    'product_id' => $item->product_id,
-                    'type'      => 'out',
-                    'quantity'  => $item->quantity,
-                    'note'      => 'Order #' . $item->order_id,
+            $productStock = ProductStock::where('sku', $orderItem->sku)->first();
+            $productAsset = Asset::where('sku', $orderItem->sku)->first();
+
+            if (!$productStock) {
+                return;
+            }
+
+            if (!$productAsset) {
+                return;
+            }
+
+            // CASE 1: pending → acc
+            if ($oldStatus == '0' && $orderItem->status == '1') {
+                if ($productStock->quantity < $orderItem->quantity) {
+                    throw new \Exception("Stok tidak cukup untuk produk {$orderItem->sku}");
+                }
+
+                $productStock->decrement('quantity', $orderItem->quantity);
+                $productAsset->decrement('jumlah', $orderItem->quantity);
+
+                // Tambahkan data ke laba_rugi
+                Jurnal::create([
+                    'type' => 'penjualan',
+                    'date' => now(),
+                    'order_item_id' => $orderItem->id,
+                    'product_name' => $orderItem->product_name,
+                    'pemasukan' => $orderItem->total_amount,
+                ]);
+
+                // Tambahkan data ke laba_rugi
+                LabaRugi::create([
+                    'type' => 'penjualan',
+                    'date' => now(),
+                    'order_item_id' => $orderItem->id,
+                    'product_name' => $orderItem->product_name,
+                    'pemasukan' => $orderItem->total_amount,
+                ]);
+            }
+
+            // CASE 2: acc → pending
+            elseif ($oldStatus == '1' && $orderItem->status == '0') {
+                $productStock->increment('quantity', $orderItem->quantity);
+                $productAsset->increment('jumlah', $orderItem->quantity);
+
+                // Hapus data jurnal terkait (opsional)
+                $orderItem->jurnal()->delete();
+
+                // Hapus data laba_rugi terkait (opsional)
+                $orderItem->labaRugi()->delete();
+            }
+
+            // CASE 3: acc → acc (quantity berubah)
+            elseif ($oldStatus == '1' && $orderItem->status == '1' && $oldQuantity != $orderItem->quantity) {
+                $selisih = $orderItem->quantity - $oldQuantity;
+
+                if ($selisih > 0) {
+                    if ($productStock->quantity < $selisih) {
+                        throw new \Exception("Stok tidak cukup untuk produk {$orderItem->sku}");
+                    }
+
+                    $productStock->decrement('quantity', $selisih);
+                    $productAsset->decrement('jumlah', $selisih);
+                } else {
+                    $productStock->increment('quantity', abs($selisih));
+                    $productAsset->increment('jumlah', abs($selisih));
+                }
+
+                // Update juga data jurnal
+                $orderItem->jurnal()->update([
+                    'quantity' => $orderItem->quantity,
+                    'pemasukan' => $orderItem->total_amount,
+                ]);
+
+                // Update juga data laba_rugi
+                $orderItem->labaRugi()->update([
+                    'quantity' => $orderItem->quantity,
+                    'pemasukan' => $orderItem->total_amount,
                 ]);
             }
         });
