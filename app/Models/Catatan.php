@@ -2,18 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Catatan extends Model
 {
-    use HasFactory, Notifiable;
-     protected $fillable = [
-            'tanggal',
-            'judul',
-            'deskripsi',
+    use HasFactory;
+    use Notifiable;
+    protected $fillable = [
+        'title',
+        'deskripsi',
+    ];
 
-     ];
-
+    public function items()
+    {
+        return $this->hasMany(CatatanItem::class, 'note_id');
+    }
 }

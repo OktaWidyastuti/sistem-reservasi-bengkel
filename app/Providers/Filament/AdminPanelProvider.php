@@ -27,12 +27,18 @@ class AdminPanelProvider extends PanelProvider
             // ->brandName('Reservasi Bengkel')
             // ->brandLogo(asset('images/logo.png'))
             // ->brandLogoHeight('2rem')
+            ->navigationGroups([
+                'Layanan Pelanggan',
+                'Database',
+                'Laporan',
+                'Tansaksi',
+            ])
             ->default()
             ->id('admin')
             ->path('admin')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#1D4ED8'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
