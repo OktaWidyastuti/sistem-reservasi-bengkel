@@ -3,21 +3,21 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DatasetResource\Pages;
-use App\Filament\Resources\DatasetResource\RelationManagers;
 use App\Models\Dataset;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class DatasetResource extends Resource
 {
     protected static ?string $model = Dataset::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?int $navigationSort = 11;
+    protected static ?string $navigationLabel = 'Dataset';
 
     public static function form(Form $form): Form
     {
@@ -26,9 +26,9 @@ class DatasetResource extends Resource
                 Forms\Components\TextInput::make('type')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('kategori')
+                Forms\Components\Textarea::make('value')
                     ->required()
-                    ->maxLength(255),
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -38,7 +38,7 @@ class DatasetResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('type')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('kategori')
+                Tables\Columns\TextColumn::make('value')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -50,7 +50,6 @@ class DatasetResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -65,7 +64,6 @@ class DatasetResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
         ];
     }
 
